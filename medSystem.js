@@ -1,35 +1,45 @@
 const pl = require("tau-prolog");
-const session = pl.create(1000);
-// const show = x => {
-//     let a = ;
-// };
+require("tau-prolog/modules/promises.js")(pl);
 
-// Get Node.js argument: node ./script.js item
-const item = process.argv[2];
+let getDiagnosis = (async (symptoms) => {
 
-// Program and goal
-const program = "illness('cold', true, true, false, true, false, false, false).\n" +
-    "illness('flu', true, true, true, true, true, true, false).\n" +
-    "illness('angina', true, false, true, false, false, true, false).\n" +
-    "illness('coronavirus', true, true, true, true, true, true, true).";
+    let answers = [];
 
-const goal = `
-    illness(X, true, true, true, true, true, true, false).
-`;
+    // illness(название, температура, кашель, горло, насморк, озноб, боль в мышцах, потеря вкусов и обоняния)
 
-// Consult program, query goal, and show answers
-async function test () {
-    let answer = false;
+    const program = "illness('good', false, false, false, false, false, false, false).\n" +
+        "illness('cold', true, true, false, false, false, true, false).\n" +
+        "illness('cold', true, false, true, false, false, false, false).\n" +
+        "illness('cold', true, false, false, true, true, false, false).\n" +
+        "illness('flu', true, true, true, true, true, true, false).\n" +
+        "illness('flu', true, false, true, true, true, true, false).\n" +
+        "illness('angina', true, false, true, true, false, true, false).\n" +
+        "illness('angina', true, false, true, false, false, true, false).\n" +
+        "illness('coronavirus', false, false, true, false, false, true, false).\n" +
+        "illness('coronavirus', true, true, true, true, true, true, true).";
 
-    await session.consult(program, {
-        success: function() {
-            session.query(goal, {
-                success: function() {
-                    session.answers(x => console.log(session.format_answer(x)));
-                }
-            })
+    const goal = `illness(X, ${Boolean(symptoms.temp)}, 
+        ${Boolean(symptoms.cough)}, 
+        ${Boolean(symptoms.throat)}, 
+        ${Boolean(symptoms.nose)}, 
+        ${Boolean(symptoms.chills)}, 
+        ${Boolean(symptoms.muscle)}, 
+        ${Boolean(symptoms.taste)}
+    ).`;
+
+    const session = pl.create();
+    await session.promiseConsult(program);
+    await session.promiseQuery(goal);
+
+    for await (let answer of session.promiseAnswers()) {
+        if (answer.links.X.id === undefined) {
+            answers.push('не удалось определить ваш диагноз, попробуйте еще раз')
+        } else {
+            answers.push(answer.links.X.id)
         }
-    });
-}
+    }
 
-test()
+    return answers;
+});
+
+module.exports = getDiagnosis;
